@@ -2,11 +2,11 @@
 def extract_content(slide):
     elements = slide.get('pageElements')
 
-    print("{} elements".format(len(elements)))
+    print('{} elements'.format(len(elements)))
 
     extracted = {
-        "elements": [],
-        "answer_type": ""
+        'elements': [],
+        'answer_type': ''
     }
 
     skip = False
@@ -39,13 +39,13 @@ def extract_content(slide):
 
                     interstitial |= _type == 'interstitial_title'
 
-                    extracted["elements"].append(
+                    extracted['elements'].append(
                         {
-                            "paragraph_index": paragraph_index,
-                            "content": _content,
-                            "style": _style,
-                            "transform": transform,
-                            "type": _type
+                            'paragraph_index': paragraph_index,
+                            'content': _content,
+                            'style': _style,
+                            'transform': transform,
+                            'type': _type
                         }
                     )
 
@@ -112,81 +112,56 @@ def _get_type(content, style, paragraph_marker):
 
 
 def _skip_slide(shape):
-    """
-    Skip any slides that have the 'NO_SMOKING' shape on them
-    """
+    """ Checks if this shape indicates this slide should be Skipped; a NO_SMOKING shape on them """
     return shape.get('shapeType') == 'NO_SMOKING'
 
 
 def _is_text(shape):
-    if shape.get('shapeType') != 'TEXT_BOX':
-        return False
-
-    return 'text' in shape
+    """ Checks if this shape represents text content; a TEXT_BOX """
+    return shape.get('shapeType') == 'TEXT_BOX' and 'text' in shape
 
 
 def _is_checkbox(shape):
-    """ Checks if this shape has a red outline"""
+    """ Checks if this shape represents a Checkbox question; a RECTANGLE with a red outline """
     if shape.get('shapeType') != 'RECTANGLE':
         return False
 
-    color = shape.get(
-        'shapeProperties', {}).get(
-        'outline', {}).get(
-        'outlineFill', {}).get(
-        'solidFill', {}).get(
-        'color', {}).get(
-        'rgbColor')
+    color = _get_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
 
     return 'blue' not in color and 'green' not in color and 'red' in color and color.get('red') == 1
 
 
 def _is_comments_box(shape):
-    """ Checks if this shape has a green outline"""
+    """ Checks if this shape represents a Comments question; RECTANGLE with a green outline """
     if shape.get('shapeType') != 'RECTANGLE':
         return False
 
-    color = shape.get(
-        'shapeProperties', {}).get(
-        'outline', {}).get(
-        'outlineFill', {}).get(
-        'solidFill', {}).get(
-        'color', {}).get(
-        'rgbColor')
+    color = _get_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
 
     return 'blue' not in color and 'red' not in color and 'green' in color and color.get('green') == 1
 
 
 def _is_radio(shape):
-    """ Checks if this shape is a circle"""
+    """ Checks if this shape represents a Radio question; an ELLIPSE/circle """
     return shape.get('shapeType') == 'ELLIPSE'
 
 
 def _is_currency(shape):
-    """
-    Currency questions have a 'ROUND_RECTANGLE' shape on them
-    """
+    """ Check if this shape represents a Currency question; a 'ROUND_RECTANGLE' """
     return shape.get('shapeType') == 'ROUND_RECTANGLE'
 
 
 def _ignore_text(content, style):
+    """ Check if this content should be ignored; i.e. isn't BLACK text """
     if not content:
         return True
 
-    if 'foregroundColor' not in style:
-        return False
+    rgb_color = _get_nested_value(style, 'foregroundColor', 'opaqueColor', 'rgbColor')
 
-    if 'opaqueColor' not in style.get('foregroundColor'):
+    if not rgb_color or len(rgb_color) == 0:
         return False
-
-    color = style.get('foregroundColor').get('opaqueColor')
-    if 'rgbColor' not in color:
-        return False
-
-    if len(color.get('rgbColor')) == 0:
-        return False
-
-    return True
+    else:
+        return True
 
 
 def _is_interstitial_title(style):
@@ -238,23 +213,29 @@ def _is_answer_prompt(style):
 
 
 def _is_font_size(style, size):
-    if not style:
-        return False
-
-    font_size = style.get('fontSize', {}).get('magnitude')
-    return font_size == size
+    return _get_nested_value(style, 'fontSize', 'magnitude') == size
 
 
 def _is_font_bold(style):
-    if not style:
-        return False
+    return style and style.get('bold')
 
-    return style.get('bold')
+
+def _get_nested_value(x, *keys):
+    """
+    Get a value nested inside a dict
+    :param x: The dict to extract the value from
+    :param keys: Any number of string arguments representing the nested keys to search through
+    :return: The value at the nested location or None if not found
+    """
+    if not x:
+        return None
+
+    for k in keys:
+        x = x.get(k)
+        if not x:
+            return None
+    return x
 
 
 def _is_paragraph_bullet_list(paragraph_marker):
-    if not paragraph_marker:
-        return False
-
-    bullet = paragraph_marker.get('bullet') is not None
-    return bullet
+    return paragraph_marker and paragraph_marker.get('bullet') is not None

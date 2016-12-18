@@ -7,7 +7,7 @@ from oauth2client import tools
 
 from auth import auth_http
 from extract import extract_content
-from process import process_content
+from process import process_content, generate_id
 
 
 def convert(flags):
@@ -36,7 +36,7 @@ def convert(flags):
         group = generate_schema_group(i+1, blocks)
         groups.append(group)
 
-    schema = generate_schema(groups)
+    schema = generate_schema(flags.survey_title, groups)
     with open(flags.out, 'w') as f:
         f.writelines(json.dumps(schema, indent=4))
 
@@ -49,40 +49,58 @@ def get_slides(service, presentation_id):
     return slides
 
 
+def generate_schema(survey_title, groups):
+    schema = {
+        'mime_type': 'application/json/ons/eq',
+        'questionnaire_id': '',
+        'schema_version': '0.0.1',
+        'data_version': '0.0.2',
+        'survey_id': generate_id(survey_title),
+        'title': survey_title,
+        'description': survey_title,
+        'theme': 'default',
+        'navigation': True,
+        'eq_id': generate_id(survey_title),
+        'groups': groups
+    }
+
+    return schema
+
+
 def generate_schema_group(index, blocks):
     return {
-        "id":  blocks[-1]['sections'][0]['id'] + '-group-' + str(index),
-        "title": blocks[-1]['sections'][0]['title'],
-        "blocks": blocks
+        'id':  blocks[-1]['sections'][0]['id'] + '-group-' + str(index),
+        'title': blocks[-1]['sections'][0]['title'],
+        'blocks': blocks
     }
 
 
 def generate_schema_block(content):
     block = {
-        "type": content.get('block_type'),
-        "id": content.get('block_id'),
-        "sections": []
+        'type': content.get('block_type'),
+        'id': content.get('block_id'),
+        'sections': []
     }
 
     section = {
-        "id": content.get('section_id'),
-        "title": content.get('section_title'),
-        "description": content.get('section_description'),
-        "questions": []
+        'id': content.get('section_id'),
+        'title': content.get('section_title'),
+        'description': content.get('section_description'),
+        'questions': []
     }
 
     if content.get('section_number'):
         section['number'] = content.get('section_number')
 
-    block["sections"].append(section)
+    block['sections'].append(section)
 
     if content.get('question_id'):
         question = {
-            "id": content.get('question_id'),
-            "title": content.get('question_title'),
-            "description": content.get('question_description'),
-            "type": "General",
-            "answers": content.get('answers')
+            'id': content.get('question_id'),
+            'title': content.get('question_title'),
+            'description': content.get('question_description'),
+            'type': 'General',
+            'answers': content.get('answers')
 
         }
 
@@ -97,36 +115,23 @@ def generate_schema_block(content):
     return block
 
 
-def generate_schema(groups):
-    schema = {
-        "mime_type": "application/json/ons/eq",
-        "questionnaire_id": "",
-        "schema_version": "0.0.1",
-        "data_version": "0.0.2",
-        "survey_id": "census",
-        "title": "UKIS",
-        "description": "UKIS Schema",
-        "theme": "default",
-        "navigation": True,
-        "eq_id": "ukis",
-        "groups": groups
-    }
-
-    return schema
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(parents=[tools.argparser])
 
-    parser.add_argument("--presentation_id",
+    parser.add_argument('--presentation_id',
                         type=str,
                         required=True,
-                        help="The id of the Google Slides presentation to convert")
+                        help='The id of the Google Slides presentation to convert')
 
-    parser.add_argument("--out",
+    parser.add_argument('--out',
                         type=str,
-                        default="slides.json",
-                        help="The file path of where the JSON schema output should be stored")
+                        default='slides.json',
+                        help='The file path of where the JSON schema output should be stored')
+
+    parser.add_argument('--survey_title',
+                        type=str,
+                        default='my survey',
+                        help='The name of the survey')
 
     _flags = parser.parse_args()
 

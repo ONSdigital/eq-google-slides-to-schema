@@ -94,6 +94,11 @@ Numeric | N/A - Assumed if none of the above shapes seen
 Any slides with the NO_SMOKING shape on it will be ignored completely,
 useful for non-questionnare slides, such as notes etc.
 
+Questionnaire groups are generated for each interstitial encountered;
+all questionnaire blocks since the last interstitial up to and include 
+the next interstitial are included in the group. The section title
+on the interstitial is used as the group title.
+
 ## Example Google Slide Presentation
 Example template here: 
 

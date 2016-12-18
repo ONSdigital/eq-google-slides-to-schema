@@ -5,38 +5,50 @@ def process_content(index, extracted):
 
     elements = sorted(extracted.get('elements'), key=_get_transform_y)
 
-    block_type = extracted.get('block_type')
     is_interstitial = _is_interstitial(elements)
 
     # Interstitial title is actually a section title
-    section_title = _content_for_type_as_list(elements, 'section_title')
+    section_title_name = 'section_title'
     if is_interstitial:
-        section_title = _content_for_type_as_list(elements, 'interstitial_title')
+        section_title_name = 'interstitial_title'
 
     section = {
         'block_id': '',
         'block_type': 'interstitial' if is_interstitial else 'questionnaire',
         'section_id': '',
-        'section_title': _process_title(section_title),
-        'section_description': _process_description(_content_for_type_as_list(elements, 'section_description')),
-        'section_number': _process_number(section_title)
+        'section_title': _process_title(elements, section_title_name),
+        'section_description': _process_description(elements, 'section_description'),
+        'section_number': _process_number(elements, section_title_name)
     }
 
     question = {
-        'question_id': _generate_id(section_title, 'question', index),
-        'question_title': _process_title(_content_for_type_as_list(elements, 'question_title')),
-        'question_description': _process_description(_content_for_type_as_list(elements, 'question_description')),
+        'question_id': generate_id(section.get('section_title'), 'question', index),
+        'question_title': _process_title(elements, 'question_title'),
+        'question_description': _process_description(elements, 'question_description'),
         'question_guidance':  _process_question_guidance(elements),
-        'question_number': _process_number(_content_for_type_as_list(elements, 'question_title')),
-        'answers': _process_answers(block_type, section_title, index, elements)
+        'question_number': _process_number(elements, 'question_title'),
+        'answers': _process_answers(extracted.get('block_type'), section.get('section_title'), index, elements)
     }
 
     section.update(question)
 
-    section['block_id'] = _generate_id(section_title, 'block', index)
-    section['section_id'] = _generate_id(section_title, 'section', index)
+    section['block_id'] = generate_id(section.get('section_title'), 'block', index)
+    section['section_id'] = generate_id(section.get('section_title'), 'section', index)
 
     return section
+
+
+def generate_id(*args):
+    """
+    Generate an id value from a list of arguments (lowercase with - separators)
+    :param args: Arbitrary length list of arguments to form the id from
+    :return: A str id value
+    """
+    _id = '-'.join([str(x) for x in args])
+    _id = _id.lower()
+
+    parts = re.sub('[^0-9a-zA-Z]+', '-', _id)
+    return ''.join(parts)
 
 
 def _process_answers(block_type, section_title, index, elements):
@@ -54,12 +66,12 @@ def _process_answers(block_type, section_title, index, elements):
     """
     answers = []
     answer = {
-        "id": _generate_id(section_title, 'answer', index, '-', 0),
-        "label": "",
-        "description": "",
-        "type": block_type,
-        "mandatory": False,
-        "options": [],
+        'id': generate_id(section_title, 'answer', index, '-', 0),
+        'label': '',
+        'description': '',
+        'type': block_type,
+        'mandatory': False,
+        'options': []
     }
 
     last_label_paragraph_index = -1
@@ -68,25 +80,19 @@ def _process_answers(block_type, section_title, index, elements):
     for element in filter(lambda x: x['type'].startswith('answer_'), elements):
 
         if element.get('type') == 'answer_label':
-            if last_label_paragraph_index is None:
-                last_label_paragraph_index = element.get('paragraph_index')
+            if element.get('paragraph_index') == last_label_paragraph_index or not element.get('content').strip():
                 answer['label'] += element.get('content')
-
-            elif element.get('paragraph_index') == last_label_paragraph_index:
-                answer['label'] += element.get('content')
-
             else:
                 # New label, start a new answer set
-                if not _is_empty_answer(answer):
-                    answers.append(answer)
+                _strip_append_answer(answers, answer)
                 last_label_paragraph_index = element.get('paragraph_index')
                 answer = {
-                    "id": _generate_id(section_title, 'answer', index, '-', len(answers)),
-                    "label": element.get('content'),
-                    "description": '',
-                    "type": block_type,
-                    "mandatory": False,
-                    "options": [],
+                    'id': generate_id(section_title, 'answer', index, '-', len(answers)),
+                    'label': element.get('content'),
+                    'description': '',
+                    'type': block_type,
+                    'mandatory': False,
+                    'options': []
                 }
 
         elif element.get('type') == 'answer_option':
@@ -102,17 +108,29 @@ def _process_answers(block_type, section_title, index, elements):
         else:
             raise ValueError('unsupported element: {}'.format(element))
 
-    # Catch the last answer if not empty
-    if not _is_empty_answer(answer):
-        answers.append(answer)
+    # Catch the last answer
+    _strip_append_answer(answers, answer)
 
     return answers
 
 
-def _is_empty_answer(answer):
-    return not answer.get('label').strip() \
-           and not answer.get('description').strip() \
-           and not answer.get('options')
+def _strip_append_answer(answers, answer):
+    """
+    Strip an answer and only append it to the answers list if it isn't empty
+    :param answers: The list of answers to append to
+    :param answer: The answer to strip and append
+    """
+    stripped_answer = {
+        'label': answer.get('label').strip(),
+        'description': answer.get('description').strip(),
+        'options': [_strip_option(o) for o in answer.get('options')]
+    }
+
+    if any(stripped_answer.values()):
+        stripped_answer['id'] = answer.get('id')
+        stripped_answer['type'] = answer.get('type')
+        stripped_answer['mandatory'] = answer.get('mandatory')
+        answers.append(stripped_answer)
 
 
 def _process_question_guidance(elements):
@@ -122,11 +140,11 @@ def _process_question_guidance(elements):
     :param elements: The list of elements for this block
     :return: A list of guidance (schema ready)
     """
-    guidii = []
+    all_guidance = []
     guidance = {
-        "title": "",
-        "description": "",
-        "list": []
+        'title': '',
+        'description': '',
+        'list': []
     }
 
     last_list_paragraph_index = -1
@@ -134,17 +152,16 @@ def _process_question_guidance(elements):
 
     for element in filter(lambda x: x['type'].startswith('question_guidance_'), elements):
         if element.get('type') == 'question_guidance_title':
-            if element.get('paragraph_index') == last_title_paragraph_index:
+            if element.get('paragraph_index') == last_title_paragraph_index or not element.get('content').strip():
                 guidance['title'] += element.get('content')
             else:
                 # This must be a new guidance section
                 last_title_paragraph_index = element.get('paragraph_index')
-                if not _is_guidance_empty(guidance):
-                    guidii.append(guidance)
+                _strip_append_guidance(all_guidance, guidance)
                 guidance = {
-                    "title": element.get('content'),
-                    "description": "",
-                    "list": []
+                    'title': element.get('content'),
+                    'description': '',
+                    'list': []
                 }
 
         elif element.get('type') == 'question_guidance_description':
@@ -160,15 +177,21 @@ def _process_question_guidance(elements):
         else:
             raise ValueError('unsupported element: {}'.format(element))
 
-    if not _is_guidance_empty(guidance):
-        # Catch the last guidance if not empty
-        guidii.append(guidance)
+    # Catch the last guidance
+    _strip_append_guidance(all_guidance, guidance)
 
-    return guidii
+    return all_guidance
 
 
-def _is_guidance_empty(guidance):
-    return not guidance.get('title').strip() and not guidance.get('description').strip() and not guidance.get('list')
+def _strip_append_guidance(all_guidance, guidance):
+    stripped_guidance = {
+        'title': guidance.get('title').strip(),
+        'description': guidance.get('description').strip(),
+        'list': [x.strip() for x in guidance.get('list') if x.strip()]
+    }
+
+    if any(stripped_guidance.values()):
+        all_guidance.append(stripped_guidance)
 
 
 def _get_transform_y(element):
@@ -206,22 +229,9 @@ def _is_interstitial(elements):
     return False
 
 
-def _generate_id(*args):
-    """
-    Generate an id value from a list of arguments (lowercase with - separators)
-    :param args: Arbitrary length list of arguments to form the id from
-    :return: A str id value
-    """
-    _id = '-'.join([str(x) for x in args])
-    _id = _id.lower()
-
-    parts = re.sub('[^0-9a-zA-Z]+', '-', _id)
-    return ''.join(parts)
-
-
 def _clean_join(content):
     """
-    Joins a list of values together and cleans (removes newlines and extraneous whitespace)
+    Joins a list of values together and cleans (removes newlines)
     :param content: A str or list of str to process
     :return: The joined/cleaned str
     """
@@ -230,26 +240,30 @@ def _clean_join(content):
     return content.replace('\n', '')
 
 
-def _process_title(content):
+def _process_title(elements, element_type):
+    content = _content_for_type_as_list(elements, element_type)
     title = _clean_join(content)
     return _extract_title_number(title).get('title')
 
 
-def _process_label(content):
+def _process_label(elements, element_type):
+    content = _content_for_type_as_list(elements, element_type)
     return _clean_join(content)
 
 
-def _process_number(content):
+def _process_number(elements, element_type):
+    content = _content_for_type_as_list(elements, element_type)
     title = _clean_join(content)
     return _extract_title_number(title).get('number')
 
 
-def _process_description(content):
+def _process_description(elements, element_type):
     """
     Joins a list of str together and creates basic HTML paragraphs around newlines.
     :param content: A list of str to process
     :return: the combined HTML str
     """
+    content = _content_for_type_as_list(elements, element_type)
     content = ''.join(content) if content else ''
     html = ''
 
@@ -268,8 +282,8 @@ def _process_option(content):
     """
     val = _clean_join(content)
     return [{
-        "label": val,
-        "value": val
+        'label': val,
+        'value': val
     }]
 
 
@@ -278,8 +292,18 @@ def _append_option(option, content):
     Appends to an existing option with more content
     """
     val = _clean_join(content)
-    option["label"] += val
-    option["value"] += val
+    option['label'] += val
+    option['value'] += val
+
+
+def _strip_option(option):
+    """
+    Strips an option dict
+    """
+    return {
+        'label': option.get('label').strip(),
+        'value': option.get('value').strip()
+    }
 
 
 def _extract_title_number(text):
