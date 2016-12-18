@@ -16,8 +16,8 @@ venv
 
 .DS_Store
 
-# Secrets
-client_secret.json
+# Secrets and output files
+*.json
 
 ## OS X
 ._*
