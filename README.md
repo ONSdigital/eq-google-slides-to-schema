@@ -17,12 +17,30 @@ Install dependencies using pip
 pip install -r requirements.txt
 ```
 
-Run the script with the id of the Google Slides presentation to convert
+## Google Slides API Access
 
+Follow the instructions in the Quickstart guide here:
+https://developers.google.com/slides/quickstart/python
+
+Specifically the section "Step 1: Turn on the Google Slides API"
+
+You will need to store the 'client_secret.json' in the same directory
+as this project. **DO NOT PUSH THIS TO GITHUB**.
+
+## Usage 
+For help using:
+```
+./convert.py --help
+```
+
+Example with the id of a Google Slides presentation to convert and 
+output file:
 ```
 ./convert.py --presentation_id=[...] --out=survey.json
-
 ```
 
-This will generate a schema from the Google Slides. Run with no options
-to see available arguments.
+You will need to authorise the project to access Google Slides with
+a valid Google account that has access the presentations you want
+to process. This is separate from the API access and is requested
+at runtime.
+

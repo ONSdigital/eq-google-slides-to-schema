@@ -1,0 +1,25 @@
+*.py[cod]
+
+# Installer logs
+pip-log.txt
+
+# Virtualenvs
+env
+env*
+venv
+
+# intellij
+.idea/
+*.ipr
+*.iml
+*.iws
+
+.DS_Store
+
+# Secrets
+client_secret.json
+
+## OS X
+._*
+.Spotlight-V100
+.Trashes
