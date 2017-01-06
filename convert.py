@@ -60,7 +60,6 @@ def generate_schema(survey_title, groups):
         'description': survey_title,
         'theme': 'default',
         'navigation': True,
-        'eq_id': generate_id(survey_title),
         'groups': groups
     }
 

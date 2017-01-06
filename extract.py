@@ -1,3 +1,5 @@
+from utils import get_dict_nested_value
+
 
 def extract_content(slide):
     elements = slide.get('pageElements')
@@ -126,7 +128,7 @@ def _is_checkbox(shape):
     if shape.get('shapeType') != 'RECTANGLE':
         return False
 
-    color = _get_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
+    color = get_dict_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
 
     return 'blue' not in color and 'green' not in color and 'red' in color and color.get('red') == 1
 
@@ -136,7 +138,7 @@ def _is_comments_box(shape):
     if shape.get('shapeType') != 'RECTANGLE':
         return False
 
-    color = _get_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
+    color = get_dict_nested_value(shape, 'shapeProperties', 'outline', 'outlineFill', 'solidFill', 'color', 'rgbColor')
 
     return 'blue' not in color and 'red' not in color and 'green' in color and color.get('green') == 1
 
@@ -156,7 +158,7 @@ def _ignore_text(content, style):
     if not content:
         return True
 
-    rgb_color = _get_nested_value(style, 'foregroundColor', 'opaqueColor', 'rgbColor')
+    rgb_color = get_dict_nested_value(style, 'foregroundColor', 'opaqueColor', 'rgbColor')
 
     if not rgb_color or len(rgb_color) == 0:
         return False
@@ -213,28 +215,11 @@ def _is_answer_prompt(style):
 
 
 def _is_font_size(style, size):
-    return _get_nested_value(style, 'fontSize', 'magnitude') == size
+    return get_dict_nested_value(style, 'fontSize', 'magnitude') == size
 
 
 def _is_font_bold(style):
     return style and style.get('bold')
-
-
-def _get_nested_value(x, *keys):
-    """
-    Get a value nested inside a dict
-    :param x: The dict to extract the value from
-    :param keys: Any number of string arguments representing the nested keys to search through
-    :return: The value at the nested location or None if not found
-    """
-    if not x:
-        return None
-
-    for k in keys:
-        x = x.get(k)
-        if not x:
-            return None
-    return x
 
 
 def _is_paragraph_bullet_list(paragraph_marker):

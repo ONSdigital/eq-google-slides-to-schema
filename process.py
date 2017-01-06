@@ -1,5 +1,7 @@
 import re
 
+from utils import get_dict_nested_value
+
 
 def process_content(index, extracted):
 
@@ -212,13 +214,72 @@ def _filter_by_type(elements, _type):
     return filter(lambda x: x.get('type') == _type, elements)
 
 
-def _content_for_type_as_list(elements, _type):
+def _content_for_type_as_html_list(elements, _type):
     """
-    Returns the list of elements that had a 'type' of _type
+    Returns a list of strings that had a 'type' of _type with
+    html formatting applied to each element.
+
+    Note: new lines aren't processed by this function (they remain as \n)
+
     :param _type: The type of element (e.g. 'section_title')
-    :return: A list
+    :return: A list of html formatted strings
     """
-    return [x.get('content') for x in _filter_by_type(elements, _type)]
+    filtered_elements = _filter_by_type(elements, _type)
+    content = []
+
+    for element in filtered_elements:
+        html = _element_to_html(element)
+        content.append(html)
+
+    content = ''.join(content) if content else ''
+
+    return content
+
+
+def _element_to_html(element):
+    """
+    Converts a element to a HTML string, with its style converted to
+    HTML tags.
+    :param element: the element to convert to HTML
+    :return: an HTML formatted str
+    """
+    style = element.get('style')
+    content = element.get('content')
+
+    if style and content:
+        if _contains_colour_value(style.get('backgroundColor')):
+            content = _safe_wrap_in_html_tag(content, 'em')
+
+    return content
+
+
+def _contains_colour_value(colour):
+    """
+    Returns whether a colour dict contains a colour value or is empty
+    :param colour: The colour dict to check
+    :return: True if there is a value associate with the colour, False otherwise
+    """
+    return bool(get_dict_nested_value(colour, 'opaqueColor', 'rgbColor'))
+
+
+def _safe_wrap_in_html_tag(content, tag_name):
+    """
+    Adds an html tag around content but handles new line characters
+    to prevent incorrectly nested tags later
+    :param content: The content to wrap in the tag
+    :param tag_name: The name of the tag to use e.g. 'em', 'strong'
+    :return: the HTML tagged string
+    """
+    raw_lines = content.split('\n')
+    tagged_lines = []
+    for line in raw_lines:
+        if line.strip():
+            tagged_line = '<{tag_name}>{line}</{tag_name}>'.format(tag_name=tag_name, line=line)
+            tagged_lines.append(tagged_line)
+        else:
+            tagged_lines.append(line)
+
+    return '\n'.join(tagged_lines)
 
 
 def _is_interstitial(elements):
@@ -240,39 +301,54 @@ def _clean_join(content):
     return content.replace('\n', '')
 
 
-def _process_title(elements, element_type):
-    content = _content_for_type_as_list(elements, element_type)
-    title = _clean_join(content)
-    return _extract_title_number(title).get('title')
-
-
-def _process_label(elements, element_type):
-    content = _content_for_type_as_list(elements, element_type)
-    return _clean_join(content)
-
-
-def _process_number(elements, element_type):
-    content = _content_for_type_as_list(elements, element_type)
-    title = _clean_join(content)
-    return _extract_title_number(title).get('number')
-
-
-def _process_description(elements, element_type):
+def _clean_join_with_html_paragraphs(content):
     """
-    Joins a list of str together and creates basic HTML paragraphs around newlines.
-    :param content: A list of str to process
-    :return: the combined HTML str
+    Joins a list of values together and replaces new lines
+    with HTML <p> tags
+    :param content: A str or list of str to process
+    :return: The joined/cleaned str with <p> tags
     """
-    content = _content_for_type_as_list(elements, element_type)
-    content = ''.join(content) if content else ''
+    if not isinstance(content, str):
+        content = ''.join(content) if content else ''
+
+    return _new_lines_to_html_paragraphs(content)
+
+
+def _new_lines_to_html_paragraphs(content):
+    """
+    Converts new line characters to HTML <p> tags
+    :param content: The content to convert
+    :return: A HTML string with <p> tags for new lines
+    """
     html = ''
-
     if content:
         paragraphs = content.split('\n')
         for paragraph in [x for x in paragraphs if x]:
             html += '<p>' + paragraph + '</p>'
 
     return html
+
+
+def _process_title(elements, element_type):
+    content = _content_for_type_as_html_list(elements, element_type)
+    title = _clean_join(content)
+    return _extract_title_number(title).get('title')
+
+
+def _process_label(elements, element_type):
+    content = _content_for_type_as_html_list(elements, element_type)
+    return _clean_join(content)
+
+
+def _process_number(elements, element_type):
+    content = _content_for_type_as_html_list(elements, element_type)
+    title = _clean_join(content)
+    return _extract_title_number(title).get('number')
+
+
+def _process_description(elements, element_type):
+    content = _content_for_type_as_html_list(elements, element_type)
+    return _clean_join_with_html_paragraphs(content)
 
 
 def _process_option(content):
