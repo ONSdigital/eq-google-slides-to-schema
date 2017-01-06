@@ -73,6 +73,7 @@ def _process_answers(block_type, section_title, index, elements):
         'description': '',
         'type': block_type,
         'mandatory': False,
+        'q_code': '',
         'options': []
     }
 
@@ -94,6 +95,7 @@ def _process_answers(block_type, section_title, index, elements):
                     'description': '',
                     'type': block_type,
                     'mandatory': False,
+                    'q_code': '',
                     'options': []
                 }
 
@@ -132,6 +134,7 @@ def _strip_append_answer(answers, answer):
         stripped_answer['id'] = answer.get('id')
         stripped_answer['type'] = answer.get('type')
         stripped_answer['mandatory'] = answer.get('mandatory')
+        stripped_answer['q_code'] = answer.get('q_code')
         answers.append(stripped_answer)
 
 
@@ -359,7 +362,8 @@ def _process_option(content):
     val = _clean_join(content)
     return [{
         'label': val,
-        'value': val
+        'value': val,
+        'q_code': ''
     }]
 
 
@@ -378,7 +382,8 @@ def _strip_option(option):
     """
     return {
         'label': option.get('label').strip(),
-        'value': option.get('value').strip()
+        'value': option.get('value').strip(),
+        'q_code': option.get('q_code').strip()
     }
 
 
