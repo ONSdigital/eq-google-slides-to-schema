@@ -38,7 +38,7 @@ def convert(flags):
 
     schema = generate_schema(flags.survey_title, groups)
     with open(flags.out, 'w') as f:
-        f.writelines(json.dumps(schema, indent=4))
+        f.writelines(json.dumps(schema, indent=4, sort_keys=True))
 
 
 def get_slides(service, presentation_id):
