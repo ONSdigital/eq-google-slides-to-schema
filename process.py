@@ -73,10 +73,10 @@ def _process_answers(block_type, section_title, index, elements):
         'description': '',
         'type': block_type,
         'mandatory': False,
-        'q_code': '',
         'options': []
     }
 
+    last_q_code = None
     last_label_paragraph_index = -1
     last_option_paragraph_index = -1
 
@@ -89,25 +89,44 @@ def _process_answers(block_type, section_title, index, elements):
                 # New label, start a new answer set
                 _strip_append_answer(answers, answer)
                 last_label_paragraph_index = element.get('paragraph_index')
+                last_q_code = None
                 answer = {
                     'id': generate_id(section_title, 'answer', index, '-', len(answers)),
                     'label': element.get('content'),
                     'description': '',
                     'type': block_type,
                     'mandatory': False,
-                    'q_code': '',
                     'options': []
                 }
 
         elif element.get('type') == 'answer_option':
             if last_option_paragraph_index != element.get('paragraph_index'):
                 last_option_paragraph_index = element.get('paragraph_index')
-                answer['options'].extend(_process_option(element.get('content')))
+                option = _process_option(element.get('content', last_q_code))
+                answer['options'].append(option)
+                last_q_code = None
             else:
                 _append_option(answer['options'][-1], element.get('content'))
 
         elif element.get('type') == 'answer_prompt':
             answer['description'] += element.get('content')
+
+        elif element.get('type') == 'answer_q_code':
+            if block_type == 'Checkbox':
+                # For Checkboxes the q_code is associated with the options
+                latest_q_code = element.get('content').strip()
+
+                # q_code could be before or after the option in y-transform order so
+                # either assign it to the last option seen (if one exists) or save it until
+                # we next encounter an option.
+                if last_q_code is None and len(answer['options']) > 0:
+                    answer['options'][-1]['q_code'] = latest_q_code
+                    last_q_code = None  # this q_code has now been used
+                else:
+                    last_q_code = latest_q_code  # save it for later
+            else:
+                # For all other question types the q_code is associated with the answer
+                answer['q_code'] = element.get('content').strip()
 
         else:
             raise ValueError('unsupported element: {}'.format(element))
@@ -134,7 +153,8 @@ def _strip_append_answer(answers, answer):
         stripped_answer['id'] = answer.get('id')
         stripped_answer['type'] = answer.get('type')
         stripped_answer['mandatory'] = answer.get('mandatory')
-        stripped_answer['q_code'] = answer.get('q_code')
+        if answer.get('q_code'):
+            stripped_answer['q_code'] = answer.get('q_code')
         answers.append(stripped_answer)
 
 
@@ -354,17 +374,22 @@ def _process_description(elements, element_type):
     return _clean_join_with_html_paragraphs(content)
 
 
-def _process_option(content):
+def _process_option(content, q_code=None):
     """
     Converts content into a radio/checkbox option schema output
     :return: A dict ready for use in the JSON Schema as a radio/check option
     """
     val = _clean_join(content)
-    return [{
+
+    option = {
         'label': val,
-        'value': val,
-        'q_code': ''
-    }]
+        'value': val
+    }
+
+    if q_code:
+        option['q_code'] = q_code.strip()
+
+    return option
 
 
 def _append_option(option, content):
@@ -380,11 +405,15 @@ def _strip_option(option):
     """
     Strips an option dict
     """
-    return {
+    clean = {
         'label': option.get('label').strip(),
         'value': option.get('value').strip(),
-        'q_code': option.get('q_code').strip()
     }
+
+    if 'q_code' in option:
+        clean['q_code'] = option.get('q_code').strip()
+
+    return clean
 
 
 def _extract_title_number(text):

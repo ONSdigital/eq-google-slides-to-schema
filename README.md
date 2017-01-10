@@ -66,6 +66,7 @@ Question Guidance | 16
 Answer Label | 14
 Answer Description | 12
 Answer Option | 13
+Answer q_code | 9
 
 Question Guidance is further processed based on the following:
 

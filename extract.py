@@ -107,6 +107,8 @@ def _get_type(content, style, paragraph_marker):
         element_type = 'answer_prompt'
     elif _is_answer_option(style):
         element_type = 'answer_option'
+    elif _is_answer_q_code(style):
+        element_type = 'answer_q_code'
     else:
         element_type = 'ignored'
 
@@ -212,6 +214,10 @@ def _is_answer_option(style):
 
 def _is_answer_prompt(style):
     return _is_font_size(style, 12)
+
+
+def _is_answer_q_code(style):
+    return _is_font_size(style, 9)
 
 
 def _is_font_size(style, size):
