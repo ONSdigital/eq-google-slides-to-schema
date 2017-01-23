@@ -221,10 +221,11 @@ def _strip_append_guidance(all_guidance, guidance):
 
 def _get_transform_y(element):
     """
-    Extracts the translateY for an element from its transform.
-    :return: an int representing the translateY value from the transform
+    Extracts the translateY for an element from its transform or assumes it to be 0
+    :return: an int representing the translateY value from the
+    transform or 0 if there is no transform present
     """
-    return element.get('transform').get('translateY')
+    return element.get('transform').get('translateY') or 0
 
 
 def _filter_by_type(elements, _type):
