@@ -44,6 +44,7 @@ def extract_content(slide):
                     extracted['elements'].append(
                         {
                             'paragraph_index': paragraph_index,
+                            'paragraph_marker': paragraph_marker,
                             'content': _content,
                             'style': _style,
                             'transform': transform,
@@ -107,6 +108,8 @@ def _get_type(content, style, paragraph_marker):
         element_type = 'answer_prompt'
     elif _is_answer_option(style):
         element_type = 'answer_option'
+    elif _is_answer_further_guidance(style):
+        element_type = 'answer_further_guidance'
     elif _is_answer_q_code(style):
         element_type = 'answer_q_code'
     else:
@@ -214,6 +217,10 @@ def _is_answer_option(style):
 
 def _is_answer_prompt(style):
     return _is_font_size(style, 12)
+
+
+def _is_answer_further_guidance(style):
+    return _is_font_size(style, 11)
 
 
 def _is_answer_q_code(style):

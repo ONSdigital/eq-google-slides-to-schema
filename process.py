@@ -71,8 +71,9 @@ def _process_answers(block_type, section_title, index, elements):
         'id': generate_id(section_title, 'answer', index, '-', 0),
         'label': '',
         'description': '',
+        'guidance': '',
         'type': block_type,
-        'mandatory': False,
+        'mandatory': True,
         'options': []
     }
 
@@ -94,8 +95,9 @@ def _process_answers(block_type, section_title, index, elements):
                     'id': generate_id(section_title, 'answer', index, '-', len(answers)),
                     'label': element.get('content'),
                     'description': '',
+                    'guidance': '',
                     'type': block_type,
-                    'mandatory': False,
+                    'mandatory': True,
                     'options': []
                 }
 
@@ -128,6 +130,9 @@ def _process_answers(block_type, section_title, index, elements):
                 # For all other question types the q_code is associated with the answer
                 answer['q_code'] = element.get('content').strip()
 
+        elif element.get('type') == 'answer_further_guidance':
+            answer['guidance'] = _process_description(elements, 'answer_further_guidance')
+
         else:
             raise ValueError('unsupported element: {}'.format(element))
 
@@ -153,6 +158,7 @@ def _strip_append_answer(answers, answer):
         stripped_answer['id'] = answer.get('id')
         stripped_answer['type'] = answer.get('type')
         stripped_answer['mandatory'] = answer.get('mandatory')
+        stripped_answer['guidance'] = answer.get('guidance')
         if answer.get('q_code'):
             stripped_answer['q_code'] = answer.get('q_code')
         answers.append(stripped_answer)
@@ -250,10 +256,26 @@ def _content_for_type_as_html_list(elements, _type):
     """
     filtered_elements = _filter_by_type(elements, _type)
     content = []
+    _in_list = False
 
     for element in filtered_elements:
+        if element.get('paragraph_marker').get('bullet'):
+            if not _in_list:
+                content.append('<ul>')
+                _in_list = True
+        elif _in_list:
+            content.append('</ul>')
+            _in_list = False
+
         html = _element_to_html(element)
+
+        if _in_list:
+            html = '<li>' + html.replace('\n', '') + '</li>'
+
         content.append(html)
+
+    if _in_list:
+        content.append('</ul>')
 
     content = ''.join(content) if content else ''
 

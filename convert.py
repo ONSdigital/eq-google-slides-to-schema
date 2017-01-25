@@ -54,10 +54,11 @@ def generate_schema(survey_title, groups):
         'mime_type': 'application/json/ons/eq',
         'questionnaire_id': '',
         'schema_version': '0.0.1',
-        'data_version': '0.0.2',
+        'data_version': '0.0.1',
         'survey_id': generate_id(survey_title),
         'title': survey_title,
         'description': survey_title,
+        'legal_basis': 'StatisticsOfTradeAct',
         'theme': 'default',
         'navigation': True,
         'groups': groups
