@@ -27,16 +27,16 @@ Specifically the section "Step 1: Turn on the Google Slides API"
 You will need to store the 'client_secret.json' in the same directory
 as this project. **DO NOT PUSH THIS TO GITHUB**.
 
-## Usage 
+## Usage
 For help using:
 ```
 ./convert.py --help
 ```
 
-Example with the id of a Google Slides presentation to convert and 
+Example with the id of a Google Slides presentation to convert and
 output file:
 ```
-./convert.py --presentation_id=[...] --out=survey.json
+python convert.py --presentation_id=[...] --out=survey.json
 ```
 
 You will need to authorise the project to access Google Slides with
@@ -45,7 +45,7 @@ to process. This is separate from the API access and is requested
 at runtime.
 
 ## Presentation Format
-In order to extract content from the Slides into a schema some 
+In order to extract content from the Slides into a schema some
 conventions need to be followed.
 
 Primarily the system uses the font-size to differentiate between
@@ -77,11 +77,11 @@ Guidance Description | none
 Guidance List Item | bullet-list
 
 Any text that is not BLACK is ignored (for example so that notes can be
-added to slides as blue-text without affecting the schema). Note that 
+added to slides as blue-text without affecting the schema). Note that
 if text isn't appearing in the schema and looks BLACK in Google Slides
 it may actually be a shade of grey, check the colour is set correctly.
 
-Answer types are determined based on the existance of shapes on the 
+Answer types are determined based on the existance of shapes on the
 slide as follows:
 
 Type | Shape
@@ -96,12 +96,12 @@ Any slides with the NO_SMOKING shape on it will be ignored completely,
 useful for non-questionnare slides, such as notes etc.
 
 Questionnaire groups are generated for each interstitial encountered;
-all questionnaire blocks since the last interstitial up to and include 
+all questionnaire blocks since the last interstitial up to and include
 the next interstitial are included in the group. The section title
 on the interstitial is used as the group title.
 
 ## Example Google Slide Presentation
-Example template here: 
+Example template here:
 
 - https://docs.google.com/presentation/d/1NEYDvueIrHrvhlKjM788Z978v5Dyu_ejjv55bND8PZs/
 
