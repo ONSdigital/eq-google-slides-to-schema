@@ -9,35 +9,31 @@ def process_content(index, extracted):
 
     is_interstitial = _is_interstitial(elements)
 
-    # Interstitial title is actually a section title
-    section_title_name = 'section_title'
+    # Interstitial title is actually a block title
+    block_title_name = 'block_title'
     if is_interstitial:
-        section_title_name = 'interstitial_title'
+        block_title_name = 'interstitial_title'
 
-    section = {
+    block = {
         'block_id': '',
         'block_type': 'interstitial' if is_interstitial else 'questionnaire',
-        'section_id': '',
-        'section_title': _process_title(elements, section_title_name),
-        'section_description': _process_description(elements, 'section_description'),
-        'section_number': _process_number(elements, section_title_name)
+        'block_title': _process_title(elements, block_title_name),
     }
 
     question = {
-        'question_id': generate_id(section.get('section_title'), 'question', index),
+        'question_id': generate_id(block.get('block_title'), 'question', index),
         'question_title': _process_title(elements, 'question_title'),
         'question_description': _process_description(elements, 'question_description'),
         'question_guidance':  _process_question_guidance(elements),
         'question_number': _process_number(elements, 'question_title'),
-        'answers': _process_answers(extracted.get('block_type'), section.get('section_title'), index, elements)
+        'answers': _process_answers(extracted.get('block_type'), block.get('block_title'), index, elements)
     }
 
-    section.update(question)
+    block.update(question)
 
-    section['block_id'] = generate_id(section.get('section_title'), 'block', index)
-    section['section_id'] = generate_id(section.get('section_title'), 'section', index)
+    block['block_id'] = generate_id(block.get('block_title'), 'block', index)
 
-    return section
+    return block
 
 
 def generate_id(*args):
@@ -46,14 +42,15 @@ def generate_id(*args):
     :param args: Arbitrary length list of arguments to form the id from
     :return: A str id value
     """
-    _id = '-'.join([str(x) for x in args])
+    _id = '-'.join([str(x) for x in args if x != ''])
+
     _id = _id.lower()
 
     parts = re.sub('[^0-9a-zA-Z]+', '-', _id)
     return ''.join(parts)
 
 
-def _process_answers(block_type, section_title, index, elements):
+def _process_answers(block_type, block_title, index, elements):
     """
     Loop through the elements (assumes they are ordered by y-transform) and generate answers.
 
@@ -61,14 +58,14 @@ def _process_answers(block_type, section_title, index, elements):
     label is > than the last label it is a new answer)
 
     :param block_type: The type of block this is (e.g. Radio, Checkbox)
-    :param section_title: The title of the section within this block
-    :param index: The index of the section this answer is within
+    :param block_title: The title of the block
+    :param index: The index of the block this answer is within
     :param elements: The y-transform ordered list of elements for this block
     :return: A list of answers (schema ready)
     """
     answers = []
     answer = {
-        'id': generate_id(section_title, 'answer', index, '-', 0),
+        'id': generate_id(block_title, 'answer', index),
         'label': '',
         'description': '',
         'type': block_type,
@@ -91,7 +88,7 @@ def _process_answers(block_type, section_title, index, elements):
                 last_label_paragraph_index = element.get('paragraph_index')
                 last_q_code = None
                 answer = {
-                    'id': generate_id(section_title, 'answer', index, '-', len(answers)),
+                    'id': generate_id(block_title, 'answer', index, '-', len(answers)),
                     'label': element.get('content'),
                     'description': '',
                     'type': block_type,
@@ -180,7 +177,7 @@ def _process_question_guidance(elements):
             if element.get('paragraph_index') == last_title_paragraph_index or not element.get('content').strip():
                 guidance['title'] += element.get('content')
             else:
-                # This must be a new guidance section
+                # This must be a new guidance block
                 last_title_paragraph_index = element.get('paragraph_index')
                 _strip_append_guidance(all_guidance, guidance)
                 guidance = {
@@ -232,7 +229,7 @@ def _filter_by_type(elements, _type):
     """
     Returns an iterator that yields all elements with a type of _type
     :param elements:
-    :param _type: the type of element (e.g. 'section_title')
+    :param _type: the type of element (e.g. 'block_title')
     :return: An iterator
     """
     return filter(lambda x: x.get('type') == _type, elements)
@@ -245,7 +242,7 @@ def _content_for_type_as_html_list(elements, _type):
 
     Note: new lines aren't processed by this function (they remain as \n)
 
-    :param _type: The type of element (e.g. 'section_title')
+    :param _type: The type of element (e.g. 'block_title')
     :return: A list of html formatted strings
     """
     filtered_elements = _filter_by_type(elements, _type)
@@ -419,9 +416,9 @@ def _strip_option(option):
 
 def _extract_title_number(text):
     """
-    Extracts the question/section number and title from a line of text
+    Extracts the question/block number and title from a line of text
     Example format: '2.3 What is your name?'
-    :param text: Text optionally containing a section/question number
+    :param text: Text optionally containing a block/question number
     :return: A dict with the 'number' and 'title' extracted from the original 'text'
     """
     match = re.match('^([0-9.]*)?\s*(.*)', text)

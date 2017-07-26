@@ -11,5 +11,5 @@ def get_dict_nested_value(x, *keys):
     for k in keys:
         x = x.get(k)
         if not x:
-            return None
+            return {}
     return x

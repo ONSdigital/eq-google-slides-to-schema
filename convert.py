@@ -1,6 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import argparse
-import json
+import os
+import pathlib
+import yaml
 
 from apiclient import discovery
 from oauth2client import tools
@@ -23,22 +25,52 @@ def convert(flags):
         content = extract_content(slide)
         if content:
             processed = process_content(i, content)
-            block = generate_schema_block(processed)
-            blocks.append(block)
+            block = generate_manifest_block(processed)
+            create_yaml_block(flags, block)
+            blocks.append(block['id'])
 
             # Interstitial marks the end of a group
             if content.get('block_type') == 'Interstitial':
-                group = generate_schema_group(i, blocks)
+                group = generate_manifest_group(len(groups), blocks)
                 groups.append(group)
                 blocks = []
 
     if blocks:
-        group = generate_schema_group(i+1, blocks)
+        group = generate_manifest_group(len(groups), blocks)
         groups.append(group)
 
-    schema = generate_schema(flags.survey_title, groups)
-    with open(flags.out, 'w') as f:
-        f.writelines(json.dumps(schema, indent=4, sort_keys=True))
+    manifest = generate_manifest(flags.survey_title, groups)
+    manifest_file = os.path.join(flags.manifest_out, flags.survey_title + '.yaml')
+    with open(manifest_file, 'w') as f:
+        yaml.dump(manifest, f, default_flow_style=False)
+
+
+def create_yaml_block(flags, block):
+    """
+    Checks if a YAML block file already exists for the given block,
+    if so, compares the content of the file with the given
+    block and creates a new variant YAML block file if different.
+    If there is no existing YAML file then a new one is created.
+    :param flags: Parses user input to define block file names
+    :param block: Generated manifest block
+    :return: Returns Block Yaml files
+    """
+    block_file = os.path.join(flags.blocks_out, block['id'] + '.yaml')
+
+    if os.path.isfile(block_file):
+        with open(block_file, 'r+') as f:
+            block_content = yaml.load(f)
+
+        if block_content != block:
+
+            block_file_variant = os.path.join(flags.blocks_out, block['id'] + '-' + flags.survey_variant + '.yaml')
+
+            with open(block_file_variant, 'w') as f:
+                yaml.dump(block, f, default_flow_style=False)
+
+    else:
+        with open(block_file, 'w') as f:
+            yaml.dump(block, f, default_flow_style=False)
 
 
 def get_slides(service, presentation_id):
@@ -49,67 +81,55 @@ def get_slides(service, presentation_id):
     return slides
 
 
-def generate_schema(survey_title, groups):
-    schema = {
+def generate_manifest(survey_title, groups):
+    manifest = {
+        'legal_basis': "StatisticsOfTradeAct",
         'mime_type': 'application/json/ons/eq',
-        'questionnaire_id': '',
+        'schema_filename': '',
         'schema_version': '0.0.1',
         'data_version': '0.0.2',
         'survey_id': generate_id(survey_title),
         'title': survey_title,
         'description': survey_title,
         'theme': 'default',
-        'navigation': True,
         'groups': groups
     }
 
-    return schema
+    return manifest
 
 
-def generate_schema_group(index, blocks):
+def generate_manifest_group(index, blocks):
     return {
-        'id':  blocks[-1]['sections'][0]['id'] + '-group-' + str(index),
-        'title': blocks[-1]['sections'][0]['title'],
+        'id': 'group-{}'.format(index),
+        'title': '',
         'blocks': blocks
     }
 
 
-def generate_schema_block(content):
+def generate_manifest_block(content: object) -> object:
     block = {
         'type': content.get('block_type'),
         'id': content.get('block_id'),
-        'sections': []
-    }
-
-    section = {
-        'id': content.get('section_id'),
-        'title': content.get('section_title'),
-        'description': content.get('section_description'),
+        'title': content.get('block_title'),
         'questions': []
     }
 
-    if content.get('section_number'):
-        section['number'] = content.get('section_number')
+    question = {
+        'id': content.get('question_id'),
+        'title': content.get('question_title'),
+        'description': content.get('question_description'),
+        'type': 'General',
+        'answers': content.get('answers')
 
-    block['sections'].append(section)
+    }
 
-    if content.get('question_id'):
-        question = {
-            'id': content.get('question_id'),
-            'title': content.get('question_title'),
-            'description': content.get('question_description'),
-            'type': 'General',
-            'answers': content.get('answers')
+    if content.get('question_number'):
+        question['number'] = content.get('question_number')
 
-        }
+    if content.get('question_guidance'):
+        question['guidance'] = content.get('question_guidance')
 
-        if content.get('question_number'):
-            question['number'] = content.get('question_number')
-
-        if content.get('question_guidance'):
-            question['guidance'] = content.get('question_guidance')
-
-        block['sections'][0]['questions'].append(question)
+    block['questions'].append(question)
 
     return block
 
@@ -120,18 +140,39 @@ if __name__ == '__main__':
     parser.add_argument('--presentation_id',
                         type=str,
                         required=True,
-                        help='The id of the Google Slides presentation to convert')
+                        help='The id of the Google Slides presentation to convert, an example can be found in '
+                             'the README')
 
-    parser.add_argument('--out',
+    parser.add_argument('--manifest_out',
                         type=str,
-                        default='slides.json',
-                        help='The file path of where the JSON schema output should be stored')
+                        default='Manifests',
+                        help='The directory path of where the YAML manifest output should be stored')
+
+    parser.add_argument('--blocks_out',
+                        type=str,
+                        default='Blocks',
+                        help='The directory path of where the YAML block(s) output should be stored')
 
     parser.add_argument('--survey_title',
                         type=str,
-                        default='my survey',
-                        help='The name of the survey')
+                        default='manifest',
+                        help='The name of the YAML manifest file created, e.g. 0102.rsi.manifest')
+
+    parser.add_argument('--survey_variant',
+                        type=str,
+                        default='variant',
+                        help='The form type, e.g. 0102')
 
     _flags = parser.parse_args()
 
+    pathlib.Path(_flags.blocks_out).mkdir(parents=True, exist_ok=True)
+
+    pathlib.Path(_flags.manifest_out).mkdir(parents=True, exist_ok=True)
+
     convert(_flags)
+
+
+
+
+
+
