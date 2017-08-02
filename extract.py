@@ -87,10 +87,10 @@ def _get_type(content, style, paragraph_marker):
         element_type = 'interstitial_title'
     elif _is_interstitial_description(style):
         element_type = 'interstitial_description'
-    elif _is_section_title(style):
-        element_type = 'section_title'
-    elif _is_section_description(style):
-        element_type = 'section_description'
+    elif _is_block_title(style):
+        element_type = 'block_title'
+    elif _is_block_description(style):
+        element_type = 'block_description'
     elif _is_question_title(style):
         element_type = 'question_title'
     elif _is_question_guidance_title(style, paragraph_marker):
@@ -157,12 +157,13 @@ def _is_currency(shape):
 
 def _ignore_text(content, style):
     """ Check if this content should be ignored; i.e. isn't BLACK text """
+    non_black_color = {'red': 0.13333334, 'blue': 0.13333334, 'green': 0.13333334}
     if not content:
         return True
 
     rgb_color = get_dict_nested_value(style, 'foregroundColor', 'opaqueColor', 'rgbColor')
 
-    if not rgb_color or len(rgb_color) == 0:
+    if not rgb_color or len(rgb_color) == 0 or rgb_color == non_black_color:
         return False
     else:
         return True
@@ -176,12 +177,12 @@ def _is_interstitial_description(style):
     return _is_font_size(style, 28)
 
 
-def _is_section_title(style):
+def _is_block_title(style):
     return _is_font_size(style, 24)
 
 
-def _is_section_description(style):
-    return _is_font_size(style, 22)
+def _is_block_description(style):
+     return _is_font_size(style, 22)
 
 
 def _is_question_title(style):

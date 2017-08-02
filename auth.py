@@ -8,7 +8,7 @@ from oauth2client.file import Storage
 # at ~/.credentials/
 SCOPES = 'https://www.googleapis.com/auth/presentations.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
-APPLICATION_NAME = 'Google Slides to EQ JSON Schema'
+APPLICATION_NAME = 'Google Slides to EQ YAML Manifests/Blocks'
 
 
 def auth_http(flags):
