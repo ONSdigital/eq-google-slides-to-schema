@@ -16,7 +16,7 @@ def process_content(index, extracted):
 
     block = {
         'block_id': '',
-        'block_type': 'interstitial' if is_interstitial else 'questionnaire',
+        'block_type': 'interstitial' if is_interstitial else 'Questionnaire',
         'block_title': _process_title(elements, block_title_name),
     }
 
@@ -202,7 +202,10 @@ def _process_question_guidance(elements):
     # Catch the last guidance
     _strip_append_guidance(all_guidance, guidance)
 
-    return all_guidance
+    if any(all_guidance):
+        return {"content": all_guidance}
+
+    return []
 
 
 def _strip_append_guidance(all_guidance, guidance):

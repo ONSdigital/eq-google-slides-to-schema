@@ -74,7 +74,7 @@ def extract_content(slide):
     elif comments:
         extracted['block_type'] = 'TextArea'
     else:
-        extracted['block_type'] = 'PositiveInteger'
+        extracted['block_type'] = 'Number'
 
     return extracted if not skip else None
 
